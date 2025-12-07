@@ -1,5 +1,6 @@
 # AI Meeting Assistant - Backend Dependencies
 # E01: Basic project framework
+# E03: LLM integration for summary generation
 
 # Web Framework
 fastapi==0.115.6
@@ -8,6 +9,7 @@ uvicorn[standard]==0.32.1
 # Database
 sqlalchemy==2.0.36
 aiosqlite==0.20.0  # Async SQLite driver
+greenlet>=3.0.0  # Required for SQLAlchemy async support
 alembic==1.14.0
 
 # Data Validation
@@ -19,4 +21,11 @@ httpx==0.28.1
 
 # Environment Variables
 python-dotenv==1.0.1
+
+# LLM SDKs (E03)
+anthropic>=0.40.0  # Anthropic Claude SDK
+openai>=1.0.0  # OpenAI SDK (also supports Azure OpenAI)
+
+# Utilities
+tenacity>=8.0.0  # Retry logic with exponential backoff
 

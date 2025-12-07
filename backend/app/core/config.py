@@ -5,13 +5,20 @@ This module contains the application settings and configuration.
 Settings are loaded from environment variables with sensible defaults.
 """
 
-from typing import List
+from typing import List, Optional
 
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    """
+    Application settings loaded from environment variables.
+    
+    LLM Provider Options:
+    - anthropic: Use Anthropic Claude API
+    - openai: Use OpenAI API
+    - azure_openai: Use Azure OpenAI Service
+    """
     
     # Application
     PROJECT_NAME: str = "AI Meeting Assistant"
@@ -33,10 +40,21 @@ class Settings(BaseSettings):
         "http://localhost:5173",
     ]
 
-    # LLM Configuration (to be configured in future episodes)
-    LLM_PROVIDER: str = "anthropic"  # Options: anthropic, openai, etc.
-    LLM_MODEL: str = "claude-sonnet-4-20250514"
+    # LLM Configuration
+    LLM_PROVIDER: str = "azure_openai"  # Options: anthropic, openai, azure_openai
+    LLM_MODEL: str = "gpt-4o-dev-aigateway-exception"
     LLM_API_KEY: str = ""
+    
+    # Azure OpenAI specific settings
+    AZURE_OPENAI_ENDPOINT: Optional[str] = "https://dev-adhoc-ai-gateway-exception.openai.azure.com/"
+    AZURE_OPENAI_API_VERSION: str = "2024-12-01-preview"
+    AZURE_OPENAI_DEPLOYMENT: Optional[str] = "gpt-4o-dev-aigateway-exception"
+    
+    # LLM Request settings
+    LLM_MAX_RETRIES: int = 3
+    LLM_TIMEOUT: int = 60  # seconds
+    LLM_MAX_TOKENS: int = 4096
+    LLM_TEMPERATURE: float = 0.7
     
     class Config:
         env_file = ".env"

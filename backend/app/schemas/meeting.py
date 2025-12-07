@@ -6,10 +6,11 @@ and serialization. These schemas are used for API request/response
 handling.
 """
 
+import json
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.meeting import MeetingStatus
 
@@ -60,11 +61,16 @@ class ActionItemBrief(BaseModel):
 
 
 class MeetingResponse(MeetingBase):
-    """Schema for meeting response."""
+    """Schema for meeting response with structured summary fields."""
 
     id: int
     original_text: Optional[str] = None
     summary: Optional[str] = None
+    topics: List[str] = Field(default_factory=list, description="Core topics discussed")
+    decisions: List[str] = Field(default_factory=list, description="Decisions made")
+    discussion_points: List[str] = Field(
+        default_factory=list, description="Key discussion points"
+    )
     status: str
     created_at: datetime
     updated_at: datetime
@@ -72,6 +78,22 @@ class MeetingResponse(MeetingBase):
 
     class Config:
         from_attributes = True
+
+    @field_validator("topics", "decisions", "discussion_points", mode="before")
+    @classmethod
+    def parse_json_field(cls, v: Any) -> List[str]:
+        """Parse JSON string fields into lists."""
+        if v is None:
+            return []
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else []
+            except json.JSONDecodeError:
+                return []
+        if isinstance(v, list):
+            return v
+        return []
 
 
 class MeetingListResponse(BaseModel):

@@ -6,6 +6,7 @@ in the database. A meeting contains the original text content, AI-generated
 summary, and associated action items.
 """
 
+import json
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, List, Optional
@@ -43,7 +44,10 @@ class Meeting(Base):
         start_time: Meeting start time (optional)
         end_time: Meeting end time (optional)
         original_text: Original meeting content/transcript (up to 50,000 chars)
-        summary: AI-generated meeting summary
+        summary: AI-generated meeting summary (plain text overview)
+        topics: JSON array of core topics discussed
+        decisions: JSON array of decisions made
+        discussion_points: JSON array of key discussion points
         status: Processing status (draft/processing/completed)
         created_at: Record creation timestamp
         updated_at: Record last update timestamp
@@ -60,6 +64,11 @@ class Meeting(Base):
     # Content fields
     original_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Structured summary fields (stored as JSON strings)
+    topics: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    decisions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    discussion_points: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Status
     status: Mapped[str] = mapped_column(
@@ -84,3 +93,33 @@ class Meeting(Base):
 
     def __repr__(self) -> str:
         return f"<Meeting(id={self.id}, title='{self.title}', status='{self.status}')>"
+    
+    @property
+    def topics_list(self) -> List[str]:
+        """Parse topics JSON string to list."""
+        if self.topics:
+            try:
+                return json.loads(self.topics)
+            except json.JSONDecodeError:
+                return []
+        return []
+    
+    @property
+    def decisions_list(self) -> List[str]:
+        """Parse decisions JSON string to list."""
+        if self.decisions:
+            try:
+                return json.loads(self.decisions)
+            except json.JSONDecodeError:
+                return []
+        return []
+    
+    @property
+    def discussion_points_list(self) -> List[str]:
+        """Parse discussion_points JSON string to list."""
+        if self.discussion_points:
+            try:
+                return json.loads(self.discussion_points)
+            except json.JSONDecodeError:
+                return []
+        return []

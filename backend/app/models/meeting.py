@@ -60,6 +60,7 @@ class Meeting(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     start_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    participants: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     # Content fields
     original_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

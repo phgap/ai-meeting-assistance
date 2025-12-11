@@ -2,7 +2,7 @@
 Meetings API Endpoints
 
 This module defines the API endpoints for meeting management.
-Includes full CRUD operations and AI summary generation.
+Includes full CRUD operations, AI summary generation, and action item extraction.
 """
 
 import logging
@@ -13,12 +13,19 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
+from app.models.action_item import ActionItem
 from app.models.meeting import Meeting, MeetingStatus
+from app.schemas.action_item import ActionItemResponse
 from app.schemas.meeting import (
     MeetingCreate,
     MeetingListResponse,
     MeetingResponse,
     MeetingUpdate,
+)
+from app.services.action_item_service import (
+    ActionItemExtractionError,
+    ActionItemExtractionService,
+    MeetingNotFoundError as ActionItemMeetingNotFoundError,
 )
 from app.services.summary_service import (
     MeetingNotFoundError,
@@ -104,6 +111,7 @@ async def create_meeting(
         start_time=meeting.start_time,
         end_time=meeting.end_time,
         original_text=meeting.original_text,
+        participants=meeting.participants,
         status=MeetingStatus.DRAFT.value,
     )
     
@@ -294,3 +302,93 @@ async def get_summary_status(
         "has_summary": meeting.summary is not None,
         "has_content": meeting.original_text is not None and len(meeting.original_text.strip()) > 0,
     }
+
+
+@router.post(
+    "/{meeting_id}/extract-actions",
+    response_model=List[ActionItemResponse],
+)
+async def extract_meeting_action_items(
+    meeting_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Extract action items from meeting content using AI.
+
+    Analyzes the meeting content and automatically extracts actionable tasks.
+    Each action item includes:
+    - **title**: Concise action description
+    - **owner**: Responsible person (if identified)
+    - **due_date**: Deadline (if mentioned)
+    - **priority**: Assessed priority (high/medium/low)
+    
+    The meeting must have original_text content to extract action items.
+    
+    - **meeting_id**: The ID of the meeting to extract action items from
+    """
+    try:
+        # Create extraction service and extract action items
+        service = ActionItemExtractionService(db)
+        action_items = await service.extract_action_items(meeting_id)
+        
+        return action_items
+        
+    except ActionItemMeetingNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Meeting with id {meeting_id} not found",
+        )
+    except ActionItemExtractionError as e:
+        logger.error(f"Action item extraction failed for meeting {meeting_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@router.get(
+    "/{meeting_id}/action-items",
+    response_model=List[ActionItemResponse],
+)
+async def get_meeting_action_items(
+    meeting_id: int,
+    status_filter: Optional[str] = Query(
+        None, 
+        description="Filter by status (todo/in_progress/done/cancelled)"
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get all action items for a meeting.
+
+    Returns all action items associated with the specified meeting.
+    Optionally filter by status.
+    
+    - **meeting_id**: The ID of the meeting
+    - **status_filter**: Optional status filter (todo/in_progress/done/cancelled)
+    """
+    # Verify meeting exists
+    meeting_result = await db.execute(
+        select(Meeting).where(Meeting.id == meeting_id)
+    )
+    if not meeting_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Meeting with id {meeting_id} not found",
+        )
+    
+    # Build query for action items
+    query = select(ActionItem).where(ActionItem.meeting_id == meeting_id)
+    
+    # Apply status filter if provided
+    if status_filter:
+        query = query.where(ActionItem.status == status_filter)
+    
+    # Order by created_at descending
+    query = query.order_by(desc(ActionItem.created_at))
+    
+    # Execute query
+    result = await db.execute(query)
+    action_items = result.scalars().all()
+    
+    return action_items

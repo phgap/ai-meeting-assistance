@@ -29,6 +29,9 @@ class MeetingCreate(MeetingBase):
     original_text: Optional[str] = Field(
         None, max_length=50000, description="Original meeting content/transcript"
     )
+    participants: Optional[str] = Field(
+        None, max_length=500, description="Comma-separated list of meeting participants"
+    )
 
 
 class MeetingUpdate(BaseModel):
@@ -41,6 +44,9 @@ class MeetingUpdate(BaseModel):
     end_time: Optional[datetime] = Field(None, description="Meeting end time")
     original_text: Optional[str] = Field(
         None, max_length=50000, description="Original meeting content/transcript"
+    )
+    participants: Optional[str] = Field(
+        None, max_length=500, description="Comma-separated list of meeting participants"
     )
     summary: Optional[str] = Field(None, description="AI-generated meeting summary")
     status: Optional[MeetingStatus] = Field(None, description="Meeting status")
@@ -65,6 +71,7 @@ class MeetingResponse(MeetingBase):
 
     id: int
     original_text: Optional[str] = None
+    participants: Optional[str] = None
     summary: Optional[str] = None
     topics: List[str] = Field(default_factory=list, description="Core topics discussed")
     decisions: List[str] = Field(default_factory=list, description="Decisions made")
